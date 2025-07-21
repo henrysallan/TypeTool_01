@@ -174,7 +174,7 @@ const GUI = ({
          )}
         <Folder title="Shared Physics" defaultOpen={false}>
             {interactionMode === 'tilt' && (
-              <Slider label="Gravity Strength" value={params.gravityStrength} min={0.1} max={5} step={0.1} onChange={(v) => updateParam('params', 'gravityStrength', v)} />
+              <Slider label="Gravity Strength" value={params.gravityStrength} min={0.1} max={30} step={0.1} onChange={(v) => updateParam('params', 'gravityStrength', v)} />
             )}
             <Slider label="Flow Influence" value={params.flowInfluence} min={0} max={1} step={0.01} onChange={(v) => updateParam('params', 'flowInfluence', v)} />
             <Slider label="Flow Speed" value={params.flowSpeed} min={0.1} max={5} step={0.1} onChange={(v) => updateParam('params', 'flowSpeed', v)} />

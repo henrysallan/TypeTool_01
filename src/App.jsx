@@ -39,7 +39,7 @@ const initialParams = {
   flowSpeed: 2.0,
   stiffness: 0.05,
   damping: 0.95,
-  gravityStrength: 1.0,
+  gravityStrength: 10.0,
   repelRadius: 80,
   repelForce: 8,
   enableCurlNoise: false,

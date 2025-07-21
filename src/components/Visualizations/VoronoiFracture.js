@@ -40,30 +40,28 @@ class FracturePiece {
     this.acc.add(force);
   }
 
-  update(params, flowField, canvasWidth, canvasHeight) {
-    // Flow field influence
+  update(params, flowField, canvasWidth, canvasHeight, gravity) {
+    if (gravity) {
+        this.applyForce(gravity.copy().mult(params.gravityStrength));
+    }
     if (params.flowInfluence > 0 && flowField) {
       const flowVector = flowField.getFlowVector(this.pos.x, this.pos.y);
       const flowInfluence = Vector2.lerp(new Vector2(0, 0), flowVector, params.flowInfluence);
       this.applyForce(flowInfluence.mult(params.flowSpeed));
     }
 
-    // Spring force
     const springForce = Vector2.sub(this.originalPos, this.pos);
     this.applyForce(springForce.mult(params.stiffness * 0.1));
 
-    // Update physics
     this.vel.add(this.acc);
     this.vel.mult(params.damping);
     this.pos.add(this.vel);
     this.acc.mult(0);
 
-    // Angular velocity
     this.angularVelocity *= this.angularDamping;
     this.angle += this.angularVelocity;
 
-    // Check bounds
-    this.checkBounds(canvasWidth, canvasHeight);
+    this.checkBounds(canvasWidth, canvasHeight, gravity);
   }
   
   findClosestNeighbors(nearby, maxDistance, maxConnections) {
@@ -83,11 +81,18 @@ class FracturePiece {
     this.closestNeighbors = distances.slice(0, maxConnections).map(d => d.piece);
   }
 
-  checkBounds(width, height) {
-    if (this.pos.x > width + 50) this.pos.x = -50;
-    if (this.pos.x < -50) this.pos.x = width + 50;
-    if (this.pos.y > height + 50) this.pos.y = -50;
-    if (this.pos.y < -50) this.pos.y = height + 50;
+  checkBounds(width, height, gravity) {
+    if (gravity) {
+      if (this.pos.x > width) { this.vel.x *= -0.5; this.pos.x = width; }
+      if (this.pos.x < 0) { this.vel.x *= -0.5; this.pos.x = 0; }
+      if (this.pos.y > height) { this.vel.y *= -0.5; this.pos.y = height; }
+      if (this.pos.y < 0) { this.vel.y *= -0.5; this.pos.y = 0; }
+    } else {
+      if (this.pos.x > width + 50) this.pos.x = -50;
+      if (this.pos.x < -50) this.pos.x = width + 50;
+      if (this.pos.y > height + 50) this.pos.y = -50;
+      if (this.pos.y < -50) this.pos.y = height + 50;
+    }
   }
 
   draw(ctx, params) {

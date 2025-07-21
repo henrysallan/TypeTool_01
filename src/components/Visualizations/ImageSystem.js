@@ -75,11 +75,22 @@ class ImageParticle {
     this.closestNeighbors = distances.slice(0, maxConnections).map(d => d.particle);
   }
 
-  checkBounds(width, height) {
-    if (this.pos.x > width) this.pos.x = 0;
-    if (this.pos.x < 0) this.pos.x = width;
-    if (this.pos.y > height) this.pos.y = 0;
-    if (this.pos.y < 0) this.pos.y = height;
+  checkBounds(width, height, gravity) {
+    if (gravity) {
+      if (this.pos.x > width - this.size || this.pos.x < this.size) {
+        this.vel.x *= -0.8;
+        this.pos.x = Math.max(this.size, Math.min(width - this.size, this.pos.x));
+      }
+      if (this.pos.y > height - this.size || this.pos.y < this.size) {
+        this.vel.y *= -0.8;
+        this.pos.y = Math.max(this.size, Math.min(height - this.size, this.pos.y));
+      }
+    } else { // Wrap around
+      if (this.pos.x > width) this.pos.x = 0;
+      if (this.pos.x < 0) this.pos.x = width;
+      if (this.pos.y > height) this.pos.y = 0;
+      if (this.pos.y < 0) this.pos.y = height;
+    }
   }
 }
 
