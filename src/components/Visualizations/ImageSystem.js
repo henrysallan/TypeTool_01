@@ -11,53 +11,43 @@ class ImageParticle {
     this.closestNeighbors = [];
     this.char = ''; 
     this.size = 1; 
+    
+    // Using Voronoi Physics Engine
+    this.mass = 1;
+    this.angle = 0;
+    this.angularVelocity = 0;
+    this.angularDamping = 0.98;
   }
 
   applyForce(force) {
-    this.acc.add(force);
+    this.acc.add(force.copy().div(this.mass));
   }
-
-  repelFrom(x, y, radius, strength) {
-    const dx = this.pos.x - x;
-    const dy = this.pos.y - y;
-    const dSq = dx * dx + dy * dy;
-    
-    if (dSq < radius * radius && dSq > 0) {
-      const d = Math.sqrt(dSq);
-      const repel = new Vector2(dx, dy);
-      repel.normalize();
-      const force = strength * (1 - d / radius);
-      repel.mult(force);
-      this.applyForce(repel);
-    }
-  }
-
+  
   update(params, flowField, canvasWidth, canvasHeight, gravity) {
     if (gravity) {
-            this.applyForce(gravity.copy().mult(params.gravityStrength));
-        }
-    
+        this.applyForce(gravity.copy().mult(params.gravityStrength));
+    }
     const springForce = Vector2.sub(this.originalPos, this.pos);
     springForce.mult(params.stiffness);
     this.applyForce(springForce);
 
-    const damping = Vector2.mult(this.vel, -params.damping);
-    this.applyForce(damping);
-
-    let physicsVel = Vector2.add(this.vel, this.acc);
+    this.vel.add(this.acc);
+    this.vel.mult(params.damping);
     this.acc.mult(0);
 
     if (params.flowInfluence > 0 && flowField) {
       const flowVector = flowField.getFlowVector(this.pos.x, this.pos.y);
       const flowVel = flowVector.mult(params.flowSpeed);
-      physicsVel = Vector2.lerp(physicsVel, flowVel, params.flowInfluence);
+      this.vel.lerp(flowVel, params.flowInfluence);
     }
 
-    this.vel = physicsVel;
     this.vel.limit(this.maxSpeed);
     this.pos.add(this.vel);
     
-    this.checkBounds(canvasWidth, canvasHeight);
+    this.angularVelocity *= this.angularDamping;
+    this.angle += this.angularVelocity;
+    
+    this.checkBounds(canvasWidth, canvasHeight, gravity);
   }
 
   findClosestNeighbors(nearby, maxDistance, maxConnections) {
@@ -119,10 +109,7 @@ export default class ImageSystem {
     }
   }
 
-  updateParams(newShared, newImage) {
-    this.sharedParams = newShared;
-    this.imageParams = newImage;
-  }
+  
 
   createParticles() {
     this.particles = [];
@@ -206,19 +193,72 @@ export default class ImageSystem {
     }
   }
 
-  update(mouse, interactionMode) {
+  updateParams(newShared, newImage) {
+    this.sharedParams = newShared;
+    this.imageParams = newImage;
+  }
+
+  update(mouse, interactionMode, gravity) {
     this.spatialGrid.clear();
     for (const p of this.particles) this.spatialGrid.add(p);
     
     for (const p of this.particles) {
-       if (interactionMode === 'repel' && mouse.isPressed) {
-        p.repelFrom(mouse.x, mouse.y, this.sharedParams.repelRadius, this.sharedParams.repelForce);
+      if (interactionMode === 'repel' && mouse.isPressed) {
+        const repelForce = Vector2.sub(p.pos, new Vector2(mouse.x, mouse.y));
+        const distSq = repelForce.magSq();
+        if (distSq < this.sharedParams.repelRadius * this.sharedParams.repelRadius && distSq > 0) {
+          repelForce.setMag(this.sharedParams.repelForce * 0.5);
+          p.applyForce(repelForce);
+        }
       }
       if (this.sharedParams.showClosestLines) {
         const nearby = this.spatialGrid.getNearby(p, this.sharedParams.closestSearchDistance);
         p.findClosestNeighbors(nearby, this.sharedParams.closestSearchDistance, this.sharedParams.maxClosestConnections);
       }
       p.update(this.sharedParams, this.flowField, this.canvas.width, this.canvas.height, gravity);
+    }
+    if (this.sharedParams.enableCollisions) {
+        this.handleCollisions();
+    }
+  }
+
+  handleCollisions() {
+    for(const particle of this.particles) {
+        const pSize = this.imageParams.renderMode === 'Circles' ? particle.size / 2 : this.sharedParams.particleSize;
+        const nearby = this.spatialGrid.getNearby(particle, pSize * 2);
+
+        for(const other of nearby) {
+            if (particle === other) continue;
+            
+            const oSize = this.imageParams.renderMode === 'Circles' ? other.size / 2 : this.sharedParams.particleSize;
+            const requiredDist = pSize + oSize;
+            const dist = Vector2.dist(particle.pos, other.pos);
+
+            if (dist < requiredDist && dist > 0) {
+                const overlap = requiredDist - dist;
+                const axis = Vector2.sub(particle.pos, other.pos).normalize();
+                
+                const totalMass = particle.mass + other.mass;
+                particle.pos.add(axis.copy().mult(overlap * (other.mass / totalMass)));
+                other.pos.sub(axis.copy().mult(overlap * (particle.mass / totalMass)));
+                
+                const rv = Vector2.sub(particle.vel, other.vel);
+                const velAlongNormal = Vector2.dot(rv, axis);
+                if (velAlongNormal > 0) continue;
+                
+                const e = 0.5;
+                let j = -(1 + e) * velAlongNormal;
+                j /= (1 / particle.mass) + (1 / other.mass);
+                
+                const impulse = axis.mult(j);
+                
+                particle.vel.add(impulse.copy().div(particle.mass));
+                other.vel.sub(impulse.copy().div(other.mass));
+                
+                particle.angularVelocity += 0.01 * j;
+                other.angularVelocity -= 0.01 * j;
+            }
+        }
     }
   }
 
@@ -232,27 +272,26 @@ export default class ImageSystem {
     }
 
     for (const p of this.particles) {
-      if (this.imageParams.renderMode === 'ASCII') {
-        ctx.fillText(p.char, p.pos.x, p.pos.y);
-      } else {
-        ctx.beginPath();
-        const size = this.imageParams.renderMode === 'Circles' ? p.size / 2 : this.sharedParams.particleSize;
-        ctx.arc(p.pos.x, p.pos.y, size, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    
-    if (this.sharedParams.showClosestLines) {
-      ctx.strokeStyle = this.sharedParams.particleColor;
-      ctx.lineWidth = 0.5;
-      for (const p of this.particles) {
-        for (const neighbor of p.closestNeighbors) {
-          ctx.beginPath();
-          ctx.moveTo(p.pos.x, p.pos.y);
-          ctx.lineTo(neighbor.pos.x, neighbor.pos.y);
-          ctx.stroke();
+        ctx.save();
+        ctx.translate(p.pos.x, p.pos.y);
+        ctx.rotate(p.angle);
+
+        if (this.imageParams.renderMode === 'ASCII') {
+            ctx.fillText(p.char, 0, 0);
+        } else {
+            ctx.beginPath();
+            const size = this.imageParams.renderMode === 'Circles' ? p.size / 2 : this.sharedParams.particleSize;
+            ctx.arc(0, 0, size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.moveTo(0,0);
+            ctx.lineTo(size, 0);
+            ctx.strokeStyle = this.sharedParams.backgroundColor;
+            ctx.lineWidth = 1;
+            ctx.stroke();
         }
-      }
+        ctx.restore();
     }
   }
 }

@@ -76,33 +76,18 @@ class Particle {
     this.acc = new Vector2(0, 0);
     this.originalPos = new Vector2(x, y);
     this.maxSpeed = 10;
-    this.closestNeighbors = [];
     this.noiseGen = noiseGen;
-
-    // New Physics Properties
+    
+    // Using Voronoi Physics Engine
     this.mass = 1;
     this.angle = 0;
     this.angularVelocity = 0;
     this.angularDamping = 0.98;
+    this.closestNeighbors = [];
   }
 
   applyForce(force) {
     this.acc.add(force.copy().div(this.mass));
-  }
-  
-  repelFrom(x, y, radius, strength) {
-    const dx = this.pos.x - x;
-    const dy = this.pos.y - y;
-    const dSq = dx * dx + dy * dy;
-    
-    if (dSq < radius * radius && dSq > 0) {
-      const d = Math.sqrt(dSq);
-      const repel = new Vector2(dx, dy);
-      repel.normalize();
-      const force = strength * (1 - d / radius);
-      repel.mult(force);
-      this.applyForce(repel);
-    }
   }
 
   update(params, flowField, canvasWidth, canvasHeight, gravity) {
@@ -113,23 +98,10 @@ class Particle {
     springForce.mult(params.stiffness);
     this.applyForce(springForce);
 
-    const damping = Vector2.mult(this.vel, -params.damping);
-    this.applyForce(damping);
-
-    if (params.enableCurlNoise) {
-      const noiseForce = this.getCurlNoise(
-        this.pos.x * params.noiseScale,
-        this.pos.y * params.noiseScale,
-      );
-      noiseForce.mult(params.noiseStrength);
-      this.applyForce(noiseForce);
-    }
-
-    // Update linear velocity
     this.vel.add(this.acc);
+    this.vel.mult(params.damping); // Apply damping after acceleration
     this.acc.mult(0);
 
-    // Apply flow field influence after primary physics
     if (params.flowInfluence > 0 && flowField) {
       const flowVector = flowField.getFlowVector(this.pos.x, this.pos.y);
       const flowVel = flowVector.mult(params.flowSpeed);
@@ -139,7 +111,6 @@ class Particle {
     this.vel.limit(this.maxSpeed);
     this.pos.add(this.vel);
     
-    // Update angular velocity
     this.angularVelocity *= this.angularDamping;
     this.angle += this.angularVelocity;
 
@@ -273,7 +244,7 @@ export default class ParticleSystem {
   updateParams(newParams) {
     this.params = newParams;
   }
-
+  
   update(mouse, interactionMode, gravity) {
     this.spatialGrid.clear();
     for (const particle of this.particles) {
@@ -282,7 +253,12 @@ export default class ParticleSystem {
     
     for (const particle of this.particles) {
       if (interactionMode === 'repel' && mouse.isPressed) {
-        particle.repelFrom(mouse.x, mouse.y, this.params.repelRadius, this.params.repelForce);
+        const repelForce = Vector2.sub(particle.pos, new Vector2(mouse.x, mouse.y));
+        const distSq = repelForce.magSq();
+        if (distSq < this.params.repelRadius * this.params.repelRadius && distSq > 0) {
+          repelForce.setMag(this.params.repelForce * 0.5); // Use setMag for consistent feel
+          particle.applyForce(repelForce);
+        }
       }
       
       if (this.params.showClosestLines) {
@@ -298,7 +274,6 @@ export default class ParticleSystem {
     }
   }
 
-
   handleCollisions() {
     for(const particle of this.particles) {
         const nearby = this.spatialGrid.getNearby(particle, this.params.particleSize * 2);
@@ -312,8 +287,10 @@ export default class ParticleSystem {
                 const overlap = requiredDist - dist;
                 const axis = Vector2.sub(particle.pos, other.pos).normalize();
                 
-                particle.pos.add(axis.copy().mult(overlap / 2));
-                other.pos.sub(axis.copy().mult(overlap / 2));
+                // Mass-based separation
+                const totalMass = particle.mass + other.mass;
+                particle.pos.add(axis.copy().mult(overlap * (other.mass / totalMass)));
+                other.pos.sub(axis.copy().mult(overlap * (particle.mass / totalMass)));
                 
                 const rv = Vector2.sub(particle.vel, other.vel);
                 const velAlongNormal = Vector2.dot(rv, axis);
@@ -327,8 +304,7 @@ export default class ParticleSystem {
                 
                 particle.vel.add(impulse.copy().div(particle.mass));
                 other.vel.sub(impulse.copy().div(other.mass));
-
-                // Add rotational impulse (simplified for circles)
+                
                 particle.angularVelocity += 0.01 * j;
                 other.angularVelocity -= 0.01 * j;
             }
@@ -363,13 +339,6 @@ export default class ParticleSystem {
       ctx.lineWidth = this.params.strokeWeight;
     }
     
-    if (this.params.useFill) {
-      ctx.fillStyle = this.params.particleColor;
-    } else {
-      ctx.strokeStyle = this.params.particleColor;
-      ctx.lineWidth = this.params.strokeWeight;
-    }
-    
     for (const p of this.particles) {
       ctx.save();
       ctx.translate(p.pos.x, p.pos.y);
@@ -384,7 +353,6 @@ export default class ParticleSystem {
         ctx.stroke();
       }
       
-      // Draw line to show rotation
       ctx.beginPath();
       ctx.moveTo(0,0);
       ctx.lineTo(this.params.particleSize, 0);

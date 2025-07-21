@@ -116,6 +116,29 @@ const Canvas = forwardRef(({
     }
   }, [flowFieldParams]);
 
+    // Global mouse/touch up listeners
+  useEffect(() => {
+    const handleMouseUpGlobal = () => {
+        if (mouseRef.current.isPressed) {
+            mouseRef.current.isPressed = false;
+            if (interactionMode === 'drawForce') {
+                flowFieldRef.current.endPath();
+            }
+        }
+    };
+
+    window.addEventListener('mouseup', handleMouseUpGlobal);
+    window.addEventListener('touchend', handleMouseUpGlobal);
+    window.addEventListener('touchcancel', handleMouseUpGlobal);
+
+    return () => {
+        window.removeEventListener('mouseup', handleMouseUpGlobal);
+        window.removeEventListener('touchend', handleMouseUpGlobal);
+        window.removeEventListener('touchcancel', handleMouseUpGlobal);
+    };
+  }, [interactionMode]);
+
+
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -154,11 +177,11 @@ const Canvas = forwardRef(({
   }, [dimensions, interactionMode]);
 
   const handleMouseMove = (e) => {
-    if (interactionMode === 'tilt') return;
+    if (interactionMode === 'tilt' || !mouseRef.current.isPressed) return;
     const rect = canvasRef.current.getBoundingClientRect();
     mouseRef.current.x = e.clientX - rect.left;
     mouseRef.current.y = e.clientY - rect.top;
-    if (mouseRef.current.isPressed && interactionMode === 'drawForce') {
+    if (interactionMode === 'drawForce') {
       flowFieldRef.current.addPathPoint(mouseRef.current.x, mouseRef.current.y);
     }
   };
@@ -170,17 +193,12 @@ const Canvas = forwardRef(({
     }
     if (e.clientX > 300) { 
       mouseRef.current.isPressed = true;
+      const rect = canvasRef.current.getBoundingClientRect();
+      mouseRef.current.x = e.clientX - rect.left;
+      mouseRef.current.y = e.clientY - rect.top;
       if (interactionMode === 'drawForce') {
         flowFieldRef.current.startPath(mouseRef.current.x, mouseRef.current.y);
       }
-    }
-  };
-
-  const handleMouseUp = () => {
-    if (interactionMode === 'tilt') return;
-    mouseRef.current.isPressed = false;
-    if (interactionMode === 'drawForce') {
-      flowFieldRef.current.endPath();
     }
   };
 
@@ -204,8 +222,7 @@ const Canvas = forwardRef(({
 
   const handleTouchMove = (e) => {
     e.preventDefault();
-    if (interactionMode === 'tilt') return;
-    if (!mouseRef.current.isPressed) return;
+    if (interactionMode === 'tilt' || !mouseRef.current.isPressed) return;
     const touch = e.touches[0];
     const rect = canvasRef.current.getBoundingClientRect();
     mouseRef.current.x = touch.clientX - rect.left;
@@ -215,17 +232,7 @@ const Canvas = forwardRef(({
     }
   };
 
-  const handleTouchEnd = (e) => {
-    e.preventDefault();
-    if (interactionMode === 'tilt') return;
-    mouseRef.current.isPressed = false;
-    if (interactionMode === 'drawForce') {
-      flowFieldRef.current.endPath();
-    }
-  };
-
-
-  return <canvas ref={canvasRef} onMouseMove={handleMouseMove} onMouseDown={handleMouseDown} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onTouchCancel={handleTouchEnd} style={{ display: 'block' }} />;
+  return <canvas ref={canvasRef} onMouseMove={handleMouseMove} onMouseDown={handleMouseDown} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} style={{ display: 'block' }} />;
 });
 
 Canvas.displayName = 'Canvas';
