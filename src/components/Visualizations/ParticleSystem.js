@@ -78,10 +78,16 @@ class Particle {
     this.maxSpeed = 10;
     this.closestNeighbors = [];
     this.noiseGen = noiseGen;
+
+    // New Physics Properties
+    this.mass = 1;
+    this.angle = 0;
+    this.angularVelocity = 0;
+    this.angularDamping = 0.98;
   }
 
   applyForce(force) {
-    this.acc.add(force);
+    this.acc.add(force.copy().div(this.mass));
   }
   
   repelFrom(x, y, radius, strength) {
@@ -119,18 +125,23 @@ class Particle {
       this.applyForce(noiseForce);
     }
 
-    let physicsVel = Vector2.add(this.vel, this.acc);
+    // Update linear velocity
+    this.vel.add(this.acc);
     this.acc.mult(0);
 
+    // Apply flow field influence after primary physics
     if (params.flowInfluence > 0 && flowField) {
       const flowVector = flowField.getFlowVector(this.pos.x, this.pos.y);
       const flowVel = flowVector.mult(params.flowSpeed);
-      physicsVel = Vector2.lerp(physicsVel, flowVel, params.flowInfluence);
+      this.vel.lerp(flowVel, params.flowInfluence);
     }
 
-    this.vel = physicsVel;
     this.vel.limit(this.maxSpeed);
     this.pos.add(this.vel);
+    
+    // Update angular velocity
+    this.angularVelocity *= this.angularDamping;
+    this.angle += this.angularVelocity;
 
     this.checkBounds(canvasWidth, canvasHeight, gravity);
   }
@@ -265,7 +276,6 @@ export default class ParticleSystem {
 
   update(mouse, interactionMode, gravity) {
     this.spatialGrid.clear();
-    
     for (const particle of this.particles) {
       this.spatialGrid.add(particle);
     }
@@ -282,7 +292,50 @@ export default class ParticleSystem {
       
       particle.update(this.params, this.flowField, this.canvas.width, this.canvas.height, gravity);
     }
+
+    if (this.params.enableCollisions) {
+      this.handleCollisions();
+    }
   }
+
+
+  handleCollisions() {
+    for(const particle of this.particles) {
+        const nearby = this.spatialGrid.getNearby(particle, this.params.particleSize * 2);
+        for(const other of nearby) {
+            if (particle === other) continue;
+            
+            const dist = Vector2.dist(particle.pos, other.pos);
+            const requiredDist = this.params.particleSize * 2;
+
+            if (dist < requiredDist && dist > 0) {
+                const overlap = requiredDist - dist;
+                const axis = Vector2.sub(particle.pos, other.pos).normalize();
+                
+                particle.pos.add(axis.copy().mult(overlap / 2));
+                other.pos.sub(axis.copy().mult(overlap / 2));
+                
+                const rv = Vector2.sub(particle.vel, other.vel);
+                const velAlongNormal = Vector2.dot(rv, axis);
+                if (velAlongNormal > 0) continue;
+                
+                const e = 0.5; // Restitution
+                let j = -(1 + e) * velAlongNormal;
+                j /= (1 / particle.mass) + (1 / other.mass);
+                
+                const impulse = axis.mult(j);
+                
+                particle.vel.add(impulse.copy().div(particle.mass));
+                other.vel.sub(impulse.copy().div(other.mass));
+
+                // Add rotational impulse (simplified for circles)
+                particle.angularVelocity += 0.01 * j;
+                other.angularVelocity -= 0.01 * j;
+            }
+        }
+    }
+  }
+
 
   draw(ctx) {
     if (this.params.showConnections) {
@@ -310,15 +363,34 @@ export default class ParticleSystem {
       ctx.lineWidth = this.params.strokeWeight;
     }
     
-    for (const particle of this.particles) {
+    if (this.params.useFill) {
+      ctx.fillStyle = this.params.particleColor;
+    } else {
+      ctx.strokeStyle = this.params.particleColor;
+      ctx.lineWidth = this.params.strokeWeight;
+    }
+    
+    for (const p of this.particles) {
+      ctx.save();
+      ctx.translate(p.pos.x, p.pos.y);
+      ctx.rotate(p.angle);
+      
       ctx.beginPath();
-      ctx.arc(particle.pos.x, particle.pos.y, this.params.particleSize, 0, Math.PI * 2);
+      ctx.arc(0, 0, this.params.particleSize, 0, Math.PI * 2);
       
       if (this.params.useFill) {
         ctx.fill();
       } else {
         ctx.stroke();
       }
+      
+      // Draw line to show rotation
+      ctx.beginPath();
+      ctx.moveTo(0,0);
+      ctx.lineTo(this.params.particleSize, 0);
+      ctx.stroke();
+
+      ctx.restore();
     }
   }
 

@@ -185,6 +185,7 @@ const Canvas = forwardRef(({
   };
 
   const handleTouchStart = (e) => {
+    e.preventDefault();
     if (interactionMode === 'tilt') {
       reset();
       return;
@@ -202,17 +203,20 @@ const Canvas = forwardRef(({
   };
 
   const handleTouchMove = (e) => {
+    e.preventDefault();
     if (interactionMode === 'tilt') return;
+    if (!mouseRef.current.isPressed) return;
     const touch = e.touches[0];
     const rect = canvasRef.current.getBoundingClientRect();
     mouseRef.current.x = touch.clientX - rect.left;
     mouseRef.current.y = touch.clientY - rect.top;
-    if (mouseRef.current.isPressed && interactionMode === 'drawForce') {
+    if (interactionMode === 'drawForce') {
       flowFieldRef.current.addPathPoint(mouseRef.current.x, mouseRef.current.y);
     }
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e) => {
+    e.preventDefault();
     if (interactionMode === 'tilt') return;
     mouseRef.current.isPressed = false;
     if (interactionMode === 'drawForce') {
