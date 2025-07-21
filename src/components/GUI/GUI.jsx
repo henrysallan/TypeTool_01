@@ -39,7 +39,7 @@ const GUI = ({
   };
 
   const onUploadClick = () => fileInputRef.current.click();
-
+  
   const handleTiltClick = () => {
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
       DeviceOrientationEvent.requestPermission()
