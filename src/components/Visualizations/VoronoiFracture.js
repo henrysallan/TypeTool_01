@@ -135,9 +135,14 @@ export default class VoronoiFracture {
     this.flowField = flowField;
     this.pieces = [];
     this.spatialGrid = new SpatialGrid(100);
-    this.createFractures();
+    
   }
   
+async init() {
+    await document.fonts.ready;
+    this.createFractures();
+  }
+
   reset() {
     for (const p of this.pieces) {
       p.pos.x = p.originalPos.x;

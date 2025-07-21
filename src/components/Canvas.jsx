@@ -21,7 +21,6 @@ const Canvas = forwardRef(({
   const tiltRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
 
-  // Use refs to hold the latest params without causing re-renders of the effect hook
   const latestParams = useRef(params);
   const latestVoronoiParams = useRef(voronoiParams);
   const latestImageParams = useRef(imageParams);
@@ -53,7 +52,6 @@ const Canvas = forwardRef(({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Device Orientation listener
   useEffect(() => {
     const handleOrientation = (event) => {
       tiltRef.current = { beta: event.beta, gamma: event.gamma };
@@ -69,18 +67,27 @@ const Canvas = forwardRef(({
   }, [interactionMode]);
 
 
-  // Initialize/re-initialize visualization only when generative params change
   useEffect(() => {
-    const canvas = canvasRef.current;
-    flowFieldRef.current = new FlowField(dimensions.width, dimensions.height, latestFlowFieldParams.current);
-
-    if (simulationMode === 'particle') {
-      visualizationRef.current = new ParticleSystem(canvas, latestParams.current, flowFieldRef.current);
-    } else if (simulationMode === 'voronoi') {
-      visualizationRef.current = new VoronoiFracture(canvas, latestVoronoiParams.current, latestParams.current, flowFieldRef.current);
-    } else if (simulationMode === 'image') {
-      visualizationRef.current = new ImageSystem(canvas, latestImageParams.current, latestParams.current, flowFieldRef.current);
-    }
+    const initVisualization = async () => {
+      const canvas = canvasRef.current;
+      flowFieldRef.current = new FlowField(dimensions.width, dimensions.height, latestFlowFieldParams.current);
+      
+      let viz;
+      if (simulationMode === 'particle') {
+        viz = new ParticleSystem(canvas, latestParams.current, flowFieldRef.current);
+      } else if (simulationMode === 'voronoi') {
+        viz = new VoronoiFracture(canvas, latestVoronoiParams.current, latestParams.current, flowFieldRef.current);
+      } else if (simulationMode === 'image') {
+        viz = new ImageSystem(canvas, latestImageParams.current, latestParams.current, flowFieldRef.current);
+      }
+      
+      if (viz) {
+        await viz.init();
+        visualizationRef.current = viz;
+      }
+    };
+    
+    initVisualization();
   }, [
       simulationMode, dimensions,
       params.text, params.fontSize, params.fontFamily, params.offsetX, params.offsetY, params.resolution,
@@ -90,7 +97,6 @@ const Canvas = forwardRef(({
       imageParams.scale, imageParams.offsetX, imageParams.offsetY
     ]);
 
-  // Update non-generative parameters on the fly
   useEffect(() => {
     if (visualizationRef.current) {
       if(simulationMode === 'image') {
@@ -110,7 +116,6 @@ const Canvas = forwardRef(({
     }
   }, [flowFieldParams]);
 
-  // Main animation loop
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -146,7 +151,7 @@ const Canvas = forwardRef(({
     };
     animate();
     return () => cancelAnimationFrame(animationRef.current);
-  }, [dimensions, interactionMode]); // Only re-run loop if these truly structural things change
+  }, [dimensions, interactionMode]);
 
   const handleMouseMove = (e) => {
     if (interactionMode === 'tilt') return;
@@ -163,7 +168,7 @@ const Canvas = forwardRef(({
       reset();
       return;
     }
-    if (e.clientX > 300) { // Don't interfere with GUI
+    if (e.clientX > 300) { 
       mouseRef.current.isPressed = true;
       if (interactionMode === 'drawForce') {
         flowFieldRef.current.startPath(mouseRef.current.x, mouseRef.current.y);
@@ -185,7 +190,7 @@ const Canvas = forwardRef(({
       return;
     }
     const touch = e.touches[0];
-    if (touch.clientX > 300) { // Don't interfere with GUI
+    if (touch.clientX > 300) {
       mouseRef.current.isPressed = true;
       const rect = canvasRef.current.getBoundingClientRect();
       mouseRef.current.x = touch.clientX - rect.left;

@@ -99,13 +99,10 @@ class Particle {
     }
   }
 
-  
-
   update(params, flowField, canvasWidth, canvasHeight, gravity) {
-    
     if (gravity) {
-            this.applyForce(gravity.copy().mult(params.gravityStrength));
-        }
+        this.applyForce(gravity.copy().mult(params.gravityStrength));
+    }
     const springForce = Vector2.sub(this.originalPos, this.pos);
     springForce.mult(params.stiffness);
     this.applyForce(springForce);
@@ -135,7 +132,7 @@ class Particle {
     this.vel.limit(this.maxSpeed);
     this.pos.add(this.vel);
 
-    this.checkBounds(canvasWidth, canvasHeight);
+    this.checkBounds(canvasWidth, canvasHeight, gravity);
   }
   
   getCurlNoise(x, y) {
@@ -170,15 +167,22 @@ class Particle {
 
   checkBounds(width, height, gravity) {
     if (gravity) {
-      if (this.pos.x > width - this.size || this.pos.x < this.size) {
-        this.vel.x *= -0.8; // Lose some energy on bounce
-        this.pos.x = Math.max(this.size, Math.min(width - this.size, this.pos.x));
+      const bounce = -0.8;
+      if (this.pos.x > width) {
+        this.pos.x = width;
+        this.vel.x *= bounce;
+      } else if (this.pos.x < 0) {
+        this.pos.x = 0;
+        this.vel.x *= bounce;
       }
-      if (this.pos.y > height - this.size || this.pos.y < this.size) {
-        this.vel.y *= -0.8;
-        this.pos.y = Math.max(this.size, Math.min(height - this.size, this.pos.y));
+      if (this.pos.y > height) {
+        this.pos.y = height;
+        this.vel.y *= bounce;
+      } else if (this.pos.y < 0) {
+        this.pos.y = 0;
+        this.vel.y *= bounce;
       }
-    } else { // Wrap around
+    } else {
       if (this.pos.x > width) this.pos.x = 0;
       if (this.pos.x < 0) this.pos.x = width;
       if (this.pos.y > height) this.pos.y = 0;
@@ -186,7 +190,6 @@ class Particle {
     }
   }
 }
-
 
 export default class ParticleSystem {
   constructor(canvas, params, flowField) {
@@ -197,6 +200,10 @@ export default class ParticleSystem {
     this.particles = [];
     this.spatialGrid = new SpatialGrid(50);
     this.noiseGen = new SimplexNoise();
+  }
+  
+  async init() {
+    await document.fonts.ready;
     this.createParticles();
   }
 
@@ -223,24 +230,25 @@ export default class ParticleSystem {
 
     const lines = this.params.text.split('\n');
     const lineHeight = this.params.fontSize * this.params.lineHeight;
-    const totalTextHeight = lines.length * lineHeight;
+    const totalTextHeight = (lines.length - 1) * lineHeight;
     
-    const startX = pg.width / 2 + this.params.offsetX;
-    const startY = (pg.height / 2) - (totalTextHeight / 2) + (lineHeight / 2) + this.params.offsetY;
+    const centerX = pg.width / 2 + this.params.offsetX;
+    const centerY = pg.height / 2 + this.params.offsetY;
 
     pgCtx.save();
-    pgCtx.translate(startX, startY);
+    pgCtx.translate(centerX, centerY);
     pgCtx.scale(this.params.scaleX, this.params.scaleY);
-    pgCtx.transform(1, 0, this.params.shear, 1, 0, 0); // Apply shear
-    pgCtx.translate(-startX, -startY);
+    pgCtx.transform(1, 0, this.params.shear, 1, 0, 0);
 
     lines.forEach((line, index) => {
-        pgCtx.fillText(line, startX, startY + (index * lineHeight) - ((lines.length - 1) * lineHeight / 2) );
+        const yPos = index * lineHeight - totalTextHeight / 2;
+        pgCtx.fillText(line, 0, yPos);
     });
     pgCtx.restore();
+    
     const imageData = pgCtx.getImageData(0, 0, pg.width, pg.height);
     const pixels = imageData.data;
-    const step = Math.max(1, 11 - this.params.resolution);
+    const step = Math.max(1, this.params.resolution);
     for (let x = 0; x < pg.width; x += step) {
       for (let y = 0; y < pg.height; y += step) {
         const index = (x + y * pg.width) * 4;
@@ -252,18 +260,7 @@ export default class ParticleSystem {
   }
 
   updateParams(newParams) {
-    const shouldRecreate =
-      this.params.text !== newParams.text ||
-      this.params.fontSize !== newParams.fontSize ||
-      this.params.fontFamily !== newParams.fontFamily ||
-      this.params.resolution !== newParams.resolution ||
-      this.params.offsetX !== newParams.offsetX ||
-      this.params.offsetY !== newParams.offsetY;
-    
     this.params = newParams;
-    if (shouldRecreate) {
-      this.createParticles();
-    }
   }
 
   update(mouse, interactionMode, gravity) {

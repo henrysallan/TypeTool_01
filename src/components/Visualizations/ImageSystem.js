@@ -103,8 +103,14 @@ export default class ImageSystem {
     this.flowField = flowField;
     this.particles = [];
     this.spatialGrid = new SpatialGrid(50);
+    
+  }
+
+    async init() {
+    await document.fonts.ready;
     this.createParticles();
   }
+  
   reset() {
     for (const p of this.particles) {
       p.pos.x = p.originalPos.x;

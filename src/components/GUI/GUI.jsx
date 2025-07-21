@@ -52,7 +52,6 @@ const GUI = ({
         })
         .catch(console.error);
     } else {
-      // For browsers that don't require permission (e.g., Android)
       setInteractionMode('tilt');
     }
   };
@@ -60,7 +59,7 @@ const GUI = ({
 
   return (
     <div id="gui-container">
-      <Folder title="Primary Controls" defaultOpen={true}>
+      <Folder title="Primary Controls" defaultOpen={false}>
         <div className="gui-row-column">
           <label>Simulation Mode</label>
           <select value={simulationMode} onChange={(e) => setSimulationMode(e.target.value)}>
@@ -85,7 +84,7 @@ const GUI = ({
       </Folder>
 
       {simulationMode === 'image' && (
-        <Folder title="Image Mode" defaultOpen={true}>
+        <Folder title="Image Mode" defaultOpen={false}>
           <div className="gui-row-column">
             <label>Image URL</label>
             <input type="text" className="gui-input-text" value={imageParams.imageUrl} onChange={(e) => updateParam('imageParams', 'imageUrl', e.target.value)} placeholder="Paste image URL..."/>
@@ -119,7 +118,7 @@ const GUI = ({
         </Folder>
       )}
 
-      <Folder title="Look" defaultOpen={true}>
+      <Folder title="Look" defaultOpen={false}>
         {(simulationMode === 'particle' || simulationMode === 'image') && (
           <>
             <Slider label="Particle Size" value={params.particleSize} min={0.5} max={10} step={0.5} onChange={(v) => updateParam('params', 'particleSize', v)} />
@@ -162,7 +161,7 @@ const GUI = ({
         <div className="gui-row-column"><label>Background</label><input type="color" value={params.backgroundColor} onChange={(e) => updateParam('params', 'backgroundColor', e.target.value)} /></div>
       </Folder>
 
-      <Folder title="Feel" defaultOpen={true}>
+      <Folder title="Feel" defaultOpen={false}>
         {simulationMode === 'voronoi' && (
           <>
             <Slider label="Cell Count" value={voronoiParams.cellCount} min={50} max={1000} step={10} onChange={(v) => updateParam('voronoiParams', 'cellCount', v)} />
@@ -174,7 +173,7 @@ const GUI = ({
          )}
         <Folder title="Shared Physics" defaultOpen={false}>
             {interactionMode === 'tilt' && (
-              <Slider label="Gravity Strength" value={params.gravityStrength} min={0.1} max={30} step={0.1} onChange={(v) => updateParam('params', 'gravityStrength', v)} />
+              <Slider label="Gravity Strength" value={params.gravityStrength} min={0.1} max={5} step={0.1} onChange={(v) => updateParam('params', 'gravityStrength', v)} />
             )}
             <Slider label="Flow Influence" value={params.flowInfluence} min={0} max={1} step={0.01} onChange={(v) => updateParam('params', 'flowInfluence', v)} />
             <Slider label="Flow Speed" value={params.flowSpeed} min={0.1} max={5} step={0.1} onChange={(v) => updateParam('params', 'flowSpeed', v)} />
