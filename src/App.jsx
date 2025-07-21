@@ -21,9 +21,11 @@ const initialTypographyParams = {
   shear: 0,
 };
 
+const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
 const initialParams = {
   text: 'Grid',
-  fontSize: 250,
+  fontSize: isMobile ? 150 : 250,
   fontFamily: 'Arial',
   fontUrl: '',
   ...initialTypographyParams,
@@ -37,6 +39,7 @@ const initialParams = {
   flowSpeed: 2.0,
   stiffness: 0.05,
   damping: 0.95,
+  gravityStrength: 1.0,
   repelRadius: 80,
   repelForce: 8,
   enableCurlNoise: false,
@@ -54,6 +57,7 @@ function App() {
   const [simulationMode, setSimulationMode] = useState('particle');
   const [interactionMode, setInteractionMode] = useState('repel');
   const canvasRef = useRef(null);
+  const stiffnessRef = useRef(initialParams.stiffness);
   
   const [params, setParams] = useState(initialParams);
 
@@ -94,8 +98,21 @@ function App() {
       imageParams: setImageParams,
       flowFieldParams: setFlowFieldParams,
     };
+    if (key === 'stiffness') {
+      stiffnessRef.current = value;
+    }
     setters[paramSet](prev => ({ ...prev, [key]: value }));
   }, []);
+
+  useEffect(() => {
+    if (interactionMode === 'tilt') {
+        stiffnessRef.current = params.stiffness;
+        setParams(p => ({ ...p, stiffness: 0 }));
+    } else {
+        setParams(p => ({ ...p, stiffness: stiffnessRef.current }));
+    }
+  }, [interactionMode]);
+
 
   useEffect(() => {
     if (params.fontUrl) {

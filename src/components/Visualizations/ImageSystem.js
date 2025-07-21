@@ -32,7 +32,11 @@ class ImageParticle {
     }
   }
 
-  update(params, flowField, canvasWidth, canvasHeight) {
+  update(params, flowField, canvasWidth, canvasHeight, gravity) {
+    if (gravity) {
+            this.applyForce(gravity.copy().mult(params.gravityStrength));
+        }
+    
     const springForce = Vector2.sub(this.originalPos, this.pos);
     springForce.mult(params.stiffness);
     this.applyForce(springForce);
@@ -190,14 +194,14 @@ export default class ImageSystem {
     for (const p of this.particles) this.spatialGrid.add(p);
     
     for (const p of this.particles) {
-      if (interactionMode === 'repel') {
+       if (interactionMode === 'repel' && mouse.isPressed) {
         p.repelFrom(mouse.x, mouse.y, this.sharedParams.repelRadius, this.sharedParams.repelForce);
       }
       if (this.sharedParams.showClosestLines) {
         const nearby = this.spatialGrid.getNearby(p, this.sharedParams.closestSearchDistance);
         p.findClosestNeighbors(nearby, this.sharedParams.closestSearchDistance, this.sharedParams.maxClosestConnections);
       }
-      p.update(this.sharedParams, this.flowField, this.canvas.width, this.canvas.height);
+      p.update(this.sharedParams, this.flowField, this.canvas.width, this.canvas.height, gravity);
     }
   }
 

@@ -99,7 +99,11 @@ class Particle {
     }
   }
 
-  update(params, flowField, canvasWidth, canvasHeight) {
+  update(params, flowField, canvasWidth, canvasHeight, gravity) {
+    
+    if (gravity) {
+            this.applyForce(gravity.copy().mult(params.gravityStrength));
+        }
     const springForce = Vector2.sub(this.originalPos, this.pos);
     springForce.mult(params.stiffness);
     this.applyForce(springForce);
@@ -248,7 +252,7 @@ export default class ParticleSystem {
     }
   }
 
-  update(mouse, interactionMode) {
+  update(mouse, interactionMode, gravity) {
     this.spatialGrid.clear();
     
     for (const particle of this.particles) {
@@ -256,7 +260,7 @@ export default class ParticleSystem {
     }
     
     for (const particle of this.particles) {
-      if (interactionMode === 'repel') {
+      if (interactionMode === 'repel' && mouse.isPressed) {
         particle.repelFrom(mouse.x, mouse.y, this.params.repelRadius, this.params.repelForce);
       }
       
@@ -265,7 +269,7 @@ export default class ParticleSystem {
         particle.findClosestNeighbors(nearby, this.params.closestSearchDistance, this.params.maxClosestConnections);
       }
       
-      particle.update(this.params, this.flowField, this.canvas.width, this.canvas.height);
+      particle.update(this.params, this.flowField, this.canvas.width, this.canvas.height, gravity);
     }
   }
 

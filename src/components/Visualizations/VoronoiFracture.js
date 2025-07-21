@@ -256,7 +256,7 @@ export default class VoronoiFracture {
     }
   }
 
-  update(mouse, interactionMode) {
+  update(mouse, interactionMode, gravity) {
     this.spatialGrid.clear();
 
     for (const piece of this.pieces) {
@@ -266,7 +266,7 @@ export default class VoronoiFracture {
     for (let i = 0; i < this.pieces.length; i++) {
       const pieceA = this.pieces[i];
 
-      if (interactionMode === 'repel') {
+      if (interactionMode === 'repel' && mouse.isPressed) {
         const repelForce = Vector2.sub(pieceA.pos, new Vector2(mouse.x, mouse.y));
         const distSq = repelForce.magSq();
         
@@ -281,7 +281,7 @@ export default class VoronoiFracture {
         pieceA.findClosestNeighbors(nearby, this.sharedParams.closestSearchDistance, this.sharedParams.maxClosestConnections);
       }
 
-      pieceA.update(this.sharedParams, this.flowField, this.canvas.width, this.canvas.height);
+      pieceA.update(this.sharedParams, this.flowField, this.canvas.width, this.canvas.height, gravity);
 
       if(this.voronoiParams.enableCollisions) {
           const nearby = this.spatialGrid.getNearby(pieceA, 100);
