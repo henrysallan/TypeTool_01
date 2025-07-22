@@ -136,7 +136,13 @@ const Canvas = forwardRef(({
       if (latestFlowFieldParams.current.showField) flowFieldRef.current.draw(ctx);
 
       if (visualizationRef.current) {
-        visualizationRef.current.update(mouseRef.current, interactionMode, gravity);
+        // For mobile touch, ensure mouse position is current even without isPressed
+        const currentMouse = {
+          x: mouseRef.current.x,
+          y: mouseRef.current.y,
+          isPressed: mouseRef.current.isPressed
+        };
+        visualizationRef.current.update(currentMouse, interactionMode, gravity);
         visualizationRef.current.draw(ctx);
       }
       
@@ -160,6 +166,27 @@ const Canvas = forwardRef(({
     mouseRef.current.y = touch.clientY - rect.top;
   };
 
+  // Add passive touch tracking for mobile
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleTouchMove = (e) => {
+      if (e.touches && e.touches.length > 0) {
+        const rect = canvas.getBoundingClientRect();
+        mouseRef.current.x = e.touches[0].clientX - rect.left;
+        mouseRef.current.y = e.touches[0].clientY - rect.top;
+      }
+    };
+
+    // Add passive listener for better mobile performance
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: true });
+
+    return () => {
+      canvas.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, []);
+
   const handleInteractionStart = (e) => {
     if (e.type === 'touchstart') e.preventDefault();
     if (interactionMode === 'tilt') {
@@ -169,7 +196,9 @@ const Canvas = forwardRef(({
     
     updateMousePosition(e);
 
-    if (mouseRef.current.x > 300) { // Don't interfere with GUI
+    // Check if interaction is on the GUI area (adjusted for mobile)
+    const guiWidth = window.innerWidth < 768 ? 280 : 300;
+    if (mouseRef.current.x > guiWidth || e.type === 'touchstart') {
       mouseRef.current.isPressed = true;
       if (interactionMode === 'drawForce') {
         flowFieldRef.current.startPath(mouseRef.current.x, mouseRef.current.y);
@@ -179,17 +208,21 @@ const Canvas = forwardRef(({
   
   const handleInteractionMove = (e) => {
     if (e.type === 'touchmove') e.preventDefault();
-    if (!mouseRef.current.isPressed || interactionMode === 'tilt') return;
     
     updateMousePosition(e);
     
-    if (interactionMode === 'drawForce') {
-      flowFieldRef.current.addPathPoint(mouseRef.current.x, mouseRef.current.y);
+    // For touch devices, we should track even without isPressed for better responsiveness
+    if (e.type === 'touchmove' || mouseRef.current.isPressed) {
+      if (interactionMode === 'tilt') return;
+      
+      if (interactionMode === 'drawForce' && mouseRef.current.isPressed) {
+        flowFieldRef.current.addPathPoint(mouseRef.current.x, mouseRef.current.y);
+      }
     }
   };
 
   const handleInteractionEnd = (e) => {
-    if (e.type === 'touchend') e.preventDefault();
+    if (e.type === 'touchend' || e.type === 'touchcancel') e.preventDefault();
     if (interactionMode === 'tilt') return;
     
     mouseRef.current.isPressed = false;
@@ -211,7 +244,15 @@ const Canvas = forwardRef(({
   }, [interactionMode]);
 
 
-  return <canvas ref={canvasRef} onMouseMove={handleInteractionMove} onMouseDown={handleInteractionStart} onTouchStart={handleInteractionStart} onTouchMove={handleInteractionMove} style={{ display: 'block' }} />;
+  return <canvas 
+    ref={canvasRef} 
+    onMouseMove={handleInteractionMove} 
+    onMouseDown={handleInteractionStart} 
+    onTouchStart={handleInteractionStart} 
+    onTouchMove={handleInteractionMove}
+    onTouchEnd={handleInteractionEnd}
+    style={{ display: 'block', touchAction: 'none' }} 
+  />;
 });
 
 Canvas.displayName = 'Canvas';
