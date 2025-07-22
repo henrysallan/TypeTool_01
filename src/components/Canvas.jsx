@@ -188,7 +188,15 @@ const Canvas = forwardRef(({
   }, []);
 
   const handleInteractionStart = (e) => {
-    if (e.type === 'touchstart') e.preventDefault();
+    // Only prevent default for canvas area, not GUI
+    const rect = canvasRef.current.getBoundingClientRect();
+    const touch = e.touches ? e.touches[0] : e;
+    const x = touch.clientX - rect.left;
+    
+    if (x > 290 && e.type === 'touchstart') {
+      e.preventDefault();
+    }
+    
     if (interactionMode === 'tilt') {
       reset();
       return;
@@ -196,9 +204,9 @@ const Canvas = forwardRef(({
     
     updateMousePosition(e);
 
-    // Check if interaction is on the GUI area (adjusted for mobile)
-    const guiWidth = window.innerWidth < 768 ? 280 : 300;
-    if (mouseRef.current.x > guiWidth || e.type === 'touchstart') {
+    // Don't start canvas interactions if touching the GUI area
+    const guiWidth = 290; // GUI width + some padding
+    if (mouseRef.current.x > guiWidth) {
       mouseRef.current.isPressed = true;
       if (interactionMode === 'drawForce') {
         flowFieldRef.current.startPath(mouseRef.current.x, mouseRef.current.y);
@@ -251,7 +259,7 @@ const Canvas = forwardRef(({
     onTouchStart={handleInteractionStart} 
     onTouchMove={handleInteractionMove}
     onTouchEnd={handleInteractionEnd}
-    style={{ display: 'block', touchAction: 'none' }} 
+    style={{ display: 'block' }} 
   />;
 });
 

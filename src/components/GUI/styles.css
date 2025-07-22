@@ -12,8 +12,9 @@
   max-height: calc(100vh - 20px);
   overflow-y: auto;
   font-size: 12px; /* Smaller font */
+  touch-action: auto; /* Ensure touch works in GUI */
+  z-index: 10; /* Ensure GUI is above canvas */
 }
-
 #gui-container::-webkit-scrollbar { width: 4px; }
 #gui-container::-webkit-scrollbar-track { background: transparent; }
 #gui-container::-webkit-scrollbar-thumb { background: var(--secondary-color); border-radius: 2px; }
