@@ -1,3 +1,28 @@
+/* Mobile-specific improvements */
+@media (max-width: 768px) {
+  #gui-container {
+    width: 260px; /* Slightly smaller on mobile */
+    font-size: 11px;
+  }
+  
+  .gui-title {
+    padding: 10px 12px; /* Larger touch target on mobile */
+  }
+  
+  .gui-button {
+    padding: 8px; /* Larger touch target */
+  }
+  
+  .gui-slider {
+    height: 6px; /* Easier to grab on mobile */
+  }
+  
+  .gui-slider::-webkit-slider-thumb {
+    width: 16px;
+    height: 16px;
+  }
+}
+
 #gui-container {
   position: absolute;
   top: 10px;

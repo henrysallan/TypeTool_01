@@ -5,6 +5,7 @@ const Folder = ({ title, children, defaultOpen = true }) => {
 
   const handleClick = (e) => {
     e.stopPropagation();
+    e.preventDefault();
     setIsOpen(!isOpen);
   };
 
@@ -13,8 +14,7 @@ const Folder = ({ title, children, defaultOpen = true }) => {
       <div 
         className="gui-title" 
         onClick={handleClick}
-        onTouchEnd={handleClick}
-        style={{ cursor: 'pointer', userSelect: 'none' }}
+        style={{ cursor: 'pointer', userSelect: 'none', WebkitTapHighlightColor: 'transparent' }}
       >
         {title}
       </div>
