@@ -188,15 +188,6 @@ const Canvas = forwardRef(({
   }, []);
 
   const handleInteractionStart = (e) => {
-    // Only prevent default for canvas area, not GUI
-    const rect = canvasRef.current.getBoundingClientRect();
-    const touch = e.touches ? e.touches[0] : e;
-    const x = touch.clientX - rect.left;
-    
-    if (x > 290 && e.type === 'touchstart') {
-      e.preventDefault();
-    }
-    
     if (interactionMode === 'tilt') {
       reset();
       return;
@@ -207,6 +198,7 @@ const Canvas = forwardRef(({
     // Don't start canvas interactions if touching the GUI area
     const guiWidth = 290; // GUI width + some padding
     if (mouseRef.current.x > guiWidth) {
+      if (e.type === 'touchstart') e.preventDefault();
       mouseRef.current.isPressed = true;
       if (interactionMode === 'drawForce') {
         flowFieldRef.current.startPath(mouseRef.current.x, mouseRef.current.y);
@@ -215,9 +207,12 @@ const Canvas = forwardRef(({
   };
   
   const handleInteractionMove = (e) => {
-    if (e.type === 'touchmove') e.preventDefault();
-    
     updateMousePosition(e);
+    
+    // Only prevent default if we're actively interacting with canvas
+    if (e.type === 'touchmove' && mouseRef.current.isPressed && mouseRef.current.x > 290) {
+      e.preventDefault();
+    }
     
     // For touch devices, we should track even without isPressed for better responsiveness
     if (e.type === 'touchmove' || mouseRef.current.isPressed) {

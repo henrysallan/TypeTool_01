@@ -21,9 +21,7 @@
     width: 16px;
     height: 16px;
   }
-}
-
-#gui-container {
+}#gui-container {
   position: absolute;
   top: 10px;
   left: 10px;
@@ -37,8 +35,8 @@
   max-height: calc(100vh - 20px);
   overflow-y: auto;
   font-size: 12px; /* Smaller font */
-  touch-action: auto; /* Ensure touch works in GUI */
-  z-index: 10; /* Ensure GUI is above canvas */
+  z-index: 1000; /* Ensure GUI is above canvas */
+  pointer-events: auto; /* Ensure GUI receives pointer events */
 }
 #gui-container::-webkit-scrollbar { width: 4px; }
 #gui-container::-webkit-scrollbar-track { background: transparent; }
