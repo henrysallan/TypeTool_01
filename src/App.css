@@ -13,14 +13,7 @@
   left: 0;
 }
 
-/* Ensure canvas doesn't block GUI */
+/* Let the canvas receive pointer events */
 canvas {
-  pointer-events: none;
-}
-
-/* Re-enable pointer events only on the canvas area outside GUI */
-@media (pointer: coarse) {
-  canvas {
-    pointer-events: auto;
-  }
+  pointer-events: auto;
 }
