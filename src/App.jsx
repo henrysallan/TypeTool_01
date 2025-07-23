@@ -146,15 +146,17 @@ function App() {
 
   return (
     <div className="app">
-      <Canvas
-        ref={canvasRef}
-        simulationMode={simulationMode}
-        interactionMode={interactionMode}
-        params={params}
-        voronoiParams={voronoiParams}
-        imageParams={imageParams}
-        flowFieldParams={flowFieldParams}
-      />
+      <div className="canvas-container">
+        <Canvas
+          ref={canvasRef}
+          simulationMode={simulationMode}
+          interactionMode={interactionMode}
+          params={params}
+          voronoiParams={voronoiParams}
+          imageParams={imageParams}
+          flowFieldParams={flowFieldParams}
+        />
+      </div>
       <GUI
         simulationMode={simulationMode}
         setSimulationMode={setSimulationMode}

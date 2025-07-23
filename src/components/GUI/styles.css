@@ -25,8 +25,8 @@
   position: absolute;
   top: 10px;
   left: 10px;
-  width: 280px; /* Made smaller */
-  background-color: rgba(26, 26, 26, 0.85); /* Semi-transparent */
+  width: 280px;
+  background-color: rgba(26, 26, 26, 0.95); /* More opaque for better visibility */
   backdrop-filter: blur(10px);
   color: var(--text-color);
   border: 1px solid var(--border-color);
@@ -34,9 +34,10 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
   max-height: calc(100vh - 20px);
   overflow-y: auto;
-  font-size: 12px; /* Smaller font */
-  z-index: 1000; /* Ensure GUI is above canvas */
-  pointer-events: auto; /* Ensure GUI receives pointer events */
+  font-size: 12px;
+  z-index: 1000;
+  pointer-events: auto; /* Ensure GUI is interactive */
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 #gui-container::-webkit-scrollbar { width: 4px; }
 #gui-container::-webkit-scrollbar-track { background: transparent; }
