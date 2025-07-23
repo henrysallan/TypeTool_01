@@ -166,14 +166,9 @@ const Canvas = forwardRef(({
     }
     
     updateMousePosition(e);
-
-    // For mobile, always allow interaction outside GUI
-    const guiWidth = 290;
-    if (mouseRef.current.x > guiWidth) {
-      mouseRef.current.isPressed = true;
-      if (interactionMode === 'drawForce') {
-        flowFieldRef.current.startPath(mouseRef.current.x, mouseRef.current.y);
-      }
+    mouseRef.current.isPressed = true;
+    if (interactionMode === 'drawForce') {
+      flowFieldRef.current.startPath(mouseRef.current.x, mouseRef.current.y);
     }
   };
   
